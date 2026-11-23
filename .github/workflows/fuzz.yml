@@ -29,18 +29,20 @@ jobs:
       - name: Install nightly Rust
         uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
-          toolchain: nightly
+          # Pinned date: the fuzz crate needs nightly for -Zsanitizer, but the
+          # exact compiler must not drift between scheduled runs.
+          toolchain: nightly-2026-11-20
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
           workspaces: fuzz
       - name: Install cargo-fuzz
         uses: taiki-e/install-action@86f7a0ffb25f40114606501a311ebcfaf882ea32 # v2
         with:
-          tool: cargo-fuzz
+          tool: cargo-fuzz@0.13.2
       - name: Build ${{ matrix.target }}
         run: cargo fuzz build ${{ matrix.target }}
       - name: Smoke run
-        run: cargo fuzz run ${{ matrix.target }} -- -max_total_time=60 -max_len=65536
+        run: cargo fuzz run ${{ matrix.target }} -- -max_total_time=60 -max_len=65536 -print_final_stats=1
       - name: Upload crashes
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -52,7 +54,10 @@ jobs:
       - name: Fail on crash artifacts
         if: always()
         run: |
-          if [ -d "fuzz/artifacts/${{ matrix.target }}" ] && [ -n "$(ls -A "fuzz/artifacts/${{ matrix.target }}")" ]; then
+          artifacts="fuzz/artifacts/${{ matrix.target }}"
+          if [ -d "$artifacts" ] && [ -n "$(ls -A "$artifacts")" ]; then
+            echo "### Fuzz smoke: ${{ matrix.target }} — crashes recorded" >> "$GITHUB_STEP_SUMMARY"
             echo "::error::crashes were recorded for ${{ matrix.target }}"
             exit 1
           fi
+          echo "### Fuzz smoke: ${{ matrix.target }} — no crashes" >> "$GITHUB_STEP_SUMMARY"

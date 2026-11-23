@@ -85,9 +85,11 @@ cargo fuzz run spec_parse
 cargo fuzz run wasm_inspect
 ```
 
-The scheduled `Fuzz smoke` workflow builds and runs both targets on nightly for
-60 seconds each, uploads any crashes under `fuzz/artifacts/<target>`, and fails
-the job when a crash artifact is present.
+The scheduled `Fuzz smoke` workflow (daily at 03:41 UTC, plus manual dispatch)
+builds and runs both targets on a pinned nightly (`nightly-2026-11-20`) and
+`cargo-fuzz@0.13.2` for 60 seconds each. It writes a per-target job summary,
+uploads any crashes under `fuzz/artifacts/<target>`, and fails the job whenever
+a crash artifact is present, including when the smoke run itself already failed.
 
 ## Coverage
 

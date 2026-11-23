@@ -1,9 +1,10 @@
 # Releasing crates
 
 Crates are **not published** to crates.io yet. This document records the
-packaging state; it is not a publication claim. Tagged releases also publish an
-SBOM and build provenance; see [supply-chain.md](supply-chain.md) for the
-artifacts and verification commands.
+packaging state; it is not a publication claim. Tagged releases publish
+platform binaries with `.sha256` checksums, an SBOM, and build provenance; see
+[supply-chain.md](supply-chain.md) for the artifact list and verification
+commands.
 
 ## Metadata
 

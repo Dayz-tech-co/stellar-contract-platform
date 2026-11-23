@@ -8,6 +8,19 @@ Each tagged release publishes, per target:
 | `….<tar.gz\|zip>.sha256` | SHA-256 of the archive |
 | `….cdx.json` | CycloneDX 1.5 SBOM for that archive |
 
+Three targets are built by the `Release` workflow on a `v*.*.*` tag:
+
+| Target | Runner | Archive |
+| ------ | ------ | ------- |
+| `x86_64-unknown-linux-gnu` | `ubuntu-latest` | `.tar.gz` |
+| `aarch64-apple-darwin` | `macos-latest` | `.tar.gz` |
+| `x86_64-pc-windows-msvc` | `windows-latest` | `.zip` |
+
+The binaries are compiled with Rust `1.88.0`, the workspace MSRV, rather than a
+floating `stable`. A `Verify release assets` job runs after the build matrix and
+fails the release if any archive is missing, if its `.sha256` file is missing, or
+if `sha256sum -c` does not match.
+
 The archive, its checksum, and its SBOM are also attested by GitHub Actions
 build provenance. The attestation is stored in GitHub's attestation store; it
 is not a separate release asset.
