@@ -330,6 +330,8 @@ enum FormatArg {
     Text,
     /// Machine-readable JSON.
     Json,
+    /// CSV output (supported by `events` only).
+    Csv,
 }
 
 impl From<FormatArg> for OutputFormat {
@@ -337,6 +339,7 @@ impl From<FormatArg> for OutputFormat {
         match value {
             FormatArg::Text => OutputFormat::Human,
             FormatArg::Json => OutputFormat::Json,
+            FormatArg::Csv => OutputFormat::Csv,
         }
     }
 }
@@ -504,7 +507,11 @@ fn run(cli: &Cli, format: OutputFormat) -> Result<ObservatoryExit> {
                 "returned": filtered.len(),
                 "events": filtered,
             });
-            emit(format, "events", &payload, || print_events(&payload))?;
+            if format == OutputFormat::Csv {
+                print_events_csv(&filtered);
+            } else {
+                emit(format, "events", &payload, || print_events(&payload))?;
+            }
             Ok(ObservatoryExit::Success)
         }
         Command::Diff { old, new, markdown } => {
@@ -983,6 +990,11 @@ fn emit<T: Serialize>(
             println!("{}", report(kind, data).to_json_pretty()?);
         }
         OutputFormat::Human => human(),
+        OutputFormat::Csv => {
+            return Err(ObservatoryError::unsupported(
+                "CSV output is supported only by the `events` command",
+            ));
+        }
     }
     Ok(())
 }
@@ -995,7 +1007,7 @@ fn emit_error(format: OutputFormat, error: &ObservatoryError) {
                 ErrorReport::from_error(error).to_json().unwrap_or_default()
             );
         }
-        OutputFormat::Human => eprintln!("error: {error}"),
+        OutputFormat::Human | OutputFormat::Csv => eprintln!("error: {error}"),
     }
 }
 
@@ -1185,6 +1197,32 @@ fn print_events(payload: &serde_json::Value) {
                 event["topics"].as_array().map_or(0, Vec::len)
             );
         }
+    }
+}
+
+fn print_events_csv(events: &[observatory_events::EventRecord]) {
+    println!("contract_id,ledger,tx_hash,event_type,topics,data");
+    for event in events {
+        let topics = serde_json::to_string(&event.topics).unwrap_or_else(|_| "[]".to_string());
+        println!(
+            "{},{},{},{},{},{}",
+            csv_field(event.contract_id.as_deref().unwrap_or("")),
+            event
+                .ledger
+                .map_or_else(String::new, |value| value.to_string()),
+            csv_field(event.tx_hash.as_deref().unwrap_or("")),
+            csv_field(&event.event_type),
+            csv_field(&topics),
+            csv_field(&event.data),
+        );
+    }
+}
+
+fn csv_field(value: &str) -> String {
+    if value.contains([',', '"', '\r', '\n']) {
+        format!("\"{}\"", value.replace('"', "\"\""))
+    } else {
+        value.to_string()
     }
 }
 
